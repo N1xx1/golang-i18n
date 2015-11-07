@@ -1,2 +1,5 @@
-helloWorld="Hello World!"
-exampleCount="There are %d people"
+helloWorld  =    "Hello World!"
+
+# comment are good
+
+exampleCount="There are %d people" #inline comments

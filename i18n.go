@@ -1,12 +1,12 @@
 package i18n
 
 import (
-	"strconv"
-	"fmt"
-	"errors"
 	"bufio"
+	"errors"
+	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 )
 
 type TranslationFunction func(string, ...interface{}) string
@@ -19,7 +19,7 @@ func Tfunc(translationFile string) (TranslationFunction, error) {
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	translations, err := parseFile(fileScanner)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func Tfunc(translationFile string) (TranslationFunction, error) {
 	if scannerErr := fileScanner.Err(); scannerErr != nil {
 		return nil, scannerErr
 	}
-	
+
 	return func(key string, args ...interface{}) string {
 		if translation, ok := translations[key]; ok {
 			return fmt.Sprintf(translation, args...)
@@ -45,23 +45,28 @@ func GlobalTfunc(translationFile string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	SetGlobalT(t)
 	return nil
 }
 
 func parseFile(scanner *bufio.Scanner) (map[string]string, error) {
 	translations := make(map[string]string)
-	r := regexp.MustCompile(`^([\d\w\-_]+)\s*=\s*(".*")$`)
-	lineNumber := 1
-	
-	for scanner.Scan() {
+	definitionRegexp := regexp.MustCompile(`^([\d\w\-_]+)\s*=\s*(".*")\s*(?:\#.*)?$`)
+	emptyLineRegexp := regexp.MustCompile(`^(|\s*(\#.*)?)$`)
+
+	for lineNumber := 1; scanner.Scan(); lineNumber++ {
 		line := scanner.Text()
-		matches := r.FindStringSubmatch(line)
+
+		if emptyLineRegexp.MatchString(line) {
+			continue
+		}
+
+		matches := definitionRegexp.FindStringSubmatch(line)
 		if len(matches) != 3 {
 			return nil, errors.New(fmt.Sprintf("Malformed line :%d (%q)", lineNumber, line))
 		}
-		
+
 		unquoted, err := strconv.Unquote(matches[2])
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("Malformed string :%d (%q)", lineNumber, line))
@@ -69,9 +74,8 @@ func parseFile(scanner *bufio.Scanner) (map[string]string, error) {
 		if _, ok := translations[matches[1]]; ok {
 			return nil, errors.New(fmt.Sprintf("Multiple definitions of key %q", matches[1]))
 		}
-		
+
 		translations[matches[1]] = unquoted
-		lineNumber += 1
 	}
 	return translations, nil
 }
@@ -81,6 +85,6 @@ func loadFile(filePath string) (*os.File, *bufio.Scanner, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	return file, bufio.NewScanner(file), nil
 }
