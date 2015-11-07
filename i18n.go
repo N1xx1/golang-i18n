@@ -36,6 +36,10 @@ func Tfunc(translationFile string) (TranslationFunction, error) {
 	}
 }
 
+func SetGlobalT(f TranslationFunction) {
+	T = f
+}
+
 func parseFile(scanner bufio.Scanner) (map[string]string, error) {
 	translations := make(map[string]string)
 	r, _ := regexp.Compile(`([\d\w\-_])\s*=\s*(".*")`)
