@@ -30,7 +30,7 @@ func Tfunc(translationFile string) (TranslationFunction, error) {
 	
 	return func(key string, args ...interface{}) string {
 		if translation, ok := translations[key]; ok {
-			return fmt.Sprintf(translation, args)
+			return fmt.Sprintf(translation, args...)
 		}
 		return key
 	}, nil
@@ -40,30 +40,39 @@ func SetGlobalT(f TranslationFunction) {
 	T = f
 }
 
+func GlobalTfunc(translationFile string) error {
+	t, err := Tfunc(translationFile)
+	if err != nil {
+		return err
+	}
+	
+	SetGlobalT(t)
+	return nil
+}
+
 func parseFile(scanner *bufio.Scanner) (map[string]string, error) {
 	translations := make(map[string]string)
-	r, _ := regexp.Compile(`([\d\w\-_])\s*=\s*(".*")`)
+	r := regexp.MustCompile(`^([\d\w\-_]+)\s*=\s*(".*")$`)
 	lineNumber := 1
 	
 	for scanner.Scan() {
 		line := scanner.Text()
 		matches := r.FindStringSubmatch(line)
-		if len(matches) != 2 {
-			return nil, errors.New(fmt.Sprintf("Malformed line %d", lineNumber))
+		if len(matches) != 3 {
+			return nil, errors.New(fmt.Sprintf("Malformed line :%d (%q)", lineNumber, line))
 		}
 		
-		unquoted, err := strconv.Unquote(matches[1])
+		unquoted, err := strconv.Unquote(matches[2])
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("Malformed string %d", lineNumber))
+			return nil, errors.New(fmt.Sprintf("Malformed string :%d (%q)", lineNumber, line))
 		}
-		if _, ok := translations[matches[0]]; ok {
-			return nil, errors.New(fmt.Sprintf("Multiple definitions of key %q", matches[0]))
+		if _, ok := translations[matches[1]]; ok {
+			return nil, errors.New(fmt.Sprintf("Multiple definitions of key %q", matches[1]))
 		}
 		
-		translations[matches[0]] = unquoted
+		translations[matches[1]] = unquoted
 		lineNumber += 1
 	}
-	
 	return translations, nil
 }
 
